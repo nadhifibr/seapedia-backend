@@ -70,3 +70,10 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
     def get_roles(self, obj):
         return list(obj.roles.values_list('role', flat=True))
+
+class SelectRoleSerializer(serializers.Serializer):
+    role = serializers.ChoiceField(choices=[('BUYER', 'BUYER'), ('SELLER', 'SELLER'), ('DRIVER', 'DRIVER')])
+
+class LogoutSerializer(serializers.Serializer):
+    refresh_token = serializers.CharField()
+

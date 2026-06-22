@@ -4,7 +4,10 @@ from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.tokens import RefreshToken
-from .serializers import RegisterSerializer, CustomTokenObtainPairSerializer, UserProfileSerializer
+from .serializers import (
+    RegisterSerializer, CustomTokenObtainPairSerializer, 
+    UserProfileSerializer, SelectRoleSerializer, LogoutSerializer
+)
 
 class RegisterView(generics.CreateAPIView):
     permission_classes = (AllowAny,)
@@ -29,13 +32,14 @@ class RegisterView(generics.CreateAPIView):
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
 
-class SelectRoleView(APIView):
+class SelectRoleView(generics.GenericAPIView):
     permission_classes = (IsAuthenticated,)
+    serializer_class = SelectRoleSerializer
 
     def post(self, request):
-        role = request.data.get('role')
-        if not role:
-            return Response({"detail": "role is required."}, status=status.HTTP_400_BAD_REQUEST)
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        role = serializer.validated_data['role']
         
         user = request.user
         roles = list(user.roles.values_list('role', flat=True))
@@ -67,15 +71,15 @@ class UserProfileView(APIView):
         data['active_role'] = active_role
         return Response(data, status=status.HTTP_200_OK)
 
-class LogoutView(APIView):
+class LogoutView(generics.GenericAPIView):
     permission_classes = (IsAuthenticated,)
+    serializer_class = LogoutSerializer
 
     def post(self, request):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
         try:
-            refresh_token = request.data.get("refresh_token")
-            if not refresh_token:
-                return Response({"detail": "refresh_token is required."}, status=status.HTTP_400_BAD_REQUEST)
-                
+            refresh_token = serializer.validated_data['refresh_token']
             token = RefreshToken(refresh_token)
             token.blacklist()
             return Response(status=status.HTTP_205_RESET_CONTENT)
