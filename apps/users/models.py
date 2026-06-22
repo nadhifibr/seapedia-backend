@@ -1,12 +1,22 @@
 import uuid
 from django.db import models
-from django.contrib.auth.models import AbstractUser
+from django.contrib.auth.models import AbstractUser, UserManager
+
+class CustomUserManager(UserManager):
+    def create_superuser(self, username, email=None, password=None, **extra_fields):
+        user = super().create_superuser(username, email, password, **extra_fields)
+        # Otomatis menambahkan role ADMIN ke UserRole
+        from apps.users.models import UserRole
+        UserRole.objects.get_or_create(user=user, role='ADMIN')
+        return user
 
 class User(AbstractUser):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     username = models.CharField(max_length=150, unique=True)
     email = models.EmailField(unique=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    
+    objects = CustomUserManager()
 
 class UserRole(models.Model):
     ROLE_CHOICES = [

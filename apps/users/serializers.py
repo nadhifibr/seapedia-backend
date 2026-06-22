@@ -63,13 +63,25 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 
 class UserProfileSerializer(serializers.ModelSerializer):
     roles = serializers.SerializerMethodField()
+    financial_summaries = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'roles')
+        fields = ('id', 'username', 'email', 'roles', 'financial_summaries')
 
     def get_roles(self, obj):
         return list(obj.roles.values_list('role', flat=True))
+
+    def get_financial_summaries(self, obj):
+        summaries = {}
+        if hasattr(obj, 'buyer_profile'):
+            summaries['wallet_balance'] = float(obj.buyer_profile.wallet_balance)
+        if hasattr(obj, 'seller_profile'):
+            # Placeholder for Seller income (will be introduced in later levels)
+            summaries['seller_income'] = 0.00
+        if hasattr(obj, 'driver_profile'):
+            summaries['driver_earnings'] = float(obj.driver_profile.total_earnings)
+        return summaries
 
 class SelectRoleSerializer(serializers.Serializer):
     role = serializers.ChoiceField(choices=[('BUYER', 'BUYER'), ('SELLER', 'SELLER'), ('DRIVER', 'DRIVER')])
