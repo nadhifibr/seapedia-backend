@@ -11,7 +11,7 @@ class BuyerPermissionMixin:
     permission_classes = [IsAuthenticated]
     
     def get_buyer_profile(self, user):
-        if not user.roles or 'BUYER' not in user.roles:
+        if not user.roles.filter(role='BUYER').exists():
             return None
         try:
             return user.buyer_profile
