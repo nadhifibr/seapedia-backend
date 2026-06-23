@@ -13,6 +13,7 @@ from apps.wallet.models import WalletTransaction
 from decimal import Decimal
 from django.utils import timezone
 from apps.discounts.models import Discount
+from apps.deliveries.models import DeliveryJob
 
 def calculate_discount_amount(discount, subtotal):
     if not discount or not discount.is_active or discount.expires_at < timezone.now():
@@ -300,6 +301,12 @@ class SellerOrderViewSet(viewsets.ReadOnlyModelViewSet):
                 order=order,
                 status='MENUNGGU_PENGIRIM',
                 note='Pesanan telah diproses oleh penjual dan menunggu pengiriman.'
+            )
+            
+            DeliveryJob.objects.create(
+                order=order,
+                status='AVAILABLE',
+                driver_earning=order.delivery_fee
             )
             
         return Response(OrderSerializer(order).data, status=status.HTTP_200_OK)
