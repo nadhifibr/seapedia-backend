@@ -16,5 +16,5 @@ class DeliveryJobSerializer(serializers.ModelSerializer):
             'id', 'order_id', 'status', 'driver_earning', 
             'store_name', 'buyer_name', 'buyer_address', 
             'delivery_method', 'taken_at', 'completed_at',
-            'items'
+            'items', 'driver_id'
         ]
