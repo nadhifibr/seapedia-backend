@@ -3,6 +3,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.db import transaction
+from django.db.models import Sum, F
 from django.shortcuts import get_object_or_404
 from .models import Order, OrderItem, OrderStatusHistory
 from .serializers import OrderSerializer, CheckoutSummarySerializer, CheckoutSerializer
@@ -47,6 +48,21 @@ class OrderViewSet(viewsets.ReadOnlyModelViewSet):
         if hasattr(user, 'buyer_profile'):
             return Order.objects.filter(buyer=user.buyer_profile).order_by('-created_at')
         return Order.objects.none()
+
+    @action(detail=False, methods=['get'])
+    def report(self, request):
+        user = self.request.user
+        if not hasattr(user, 'buyer_profile'):
+            return Response({'detail': 'Not a buyer.'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        orders = Order.objects.filter(buyer=user.buyer_profile, is_refunded=False)
+        total_spent = orders.aggregate(total_sum=Sum('total'))['total_sum'] or Decimal('0.00')
+        total_orders = orders.count()
+        
+        return Response({
+            'total_spent': total_spent,
+            'total_orders': total_orders
+        }, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=['post', 'get'], url_path='checkout-summary')
     def checkout_summary(self, request):
@@ -251,6 +267,23 @@ class SellerOrderViewSet(viewsets.ReadOnlyModelViewSet):
         if hasattr(user, 'seller_profile') and hasattr(user.seller_profile, 'store'):
             return Order.objects.filter(store=user.seller_profile.store).order_by('-created_at')
         return Order.objects.none()
+
+    @action(detail=False, methods=['get'])
+    def report(self, request):
+        user = self.request.user
+        if not hasattr(user, 'seller_profile') or not hasattr(user.seller_profile, 'store'):
+            return Response({'detail': 'Not a seller or no store.'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        orders = Order.objects.filter(store=user.seller_profile.store, is_refunded=False)
+        revenue = orders.aggregate(
+            total_revenue=Sum(F('subtotal') - F('discount_amount'))
+        )['total_revenue'] or Decimal('0.00')
+        total_orders = orders.count()
+        
+        return Response({
+            'total_revenue': revenue,
+            'total_orders': total_orders
+        }, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=['post'], url_path='process')
     def process_order(self, request, pk=None):
