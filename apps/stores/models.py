@@ -7,4 +7,5 @@ class Store(models.Model):
     seller = models.OneToOneField(SellerProfile, on_delete=models.CASCADE, related_name='store')
     name = models.CharField(max_length=255, unique=True)
     description = models.TextField(blank=True)
+    image_url = models.URLField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
