@@ -251,3 +251,22 @@ class SellerOrderViewSet(viewsets.ReadOnlyModelViewSet):
         if hasattr(user, 'seller_profile') and hasattr(user.seller_profile, 'store'):
             return Order.objects.filter(store=user.seller_profile.store).order_by('-created_at')
         return Order.objects.none()
+
+    @action(detail=True, methods=['post'], url_path='process')
+    def process_order(self, request, pk=None):
+        order = self.get_object()
+        
+        if order.status != 'SEDANG_DIKEMAS':
+            return Response({'detail': 'Only orders with SEDANG_DIKEMAS status can be processed.'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        with transaction.atomic():
+            order.status = 'MENUNGGU_PENGIRIM'
+            order.save()
+            
+            OrderStatusHistory.objects.create(
+                order=order,
+                status='MENUNGGU_PENGIRIM',
+                note='Pesanan telah diproses oleh penjual dan menunggu pengiriman.'
+            )
+            
+        return Response(OrderSerializer(order).data, status=status.HTTP_200_OK)

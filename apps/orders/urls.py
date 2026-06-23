@@ -1,8 +1,8 @@
 from django.urls import path, include
-from rest_framework.routers import DefaultRouter
+from rest_framework.routers import SimpleRouter
 from .views import OrderViewSet, SellerOrderViewSet
 
-seller_router = DefaultRouter()
+seller_router = SimpleRouter()
 seller_router.register(r'incoming', SellerOrderViewSet, basename='seller-order')
 
 urlpatterns = [
