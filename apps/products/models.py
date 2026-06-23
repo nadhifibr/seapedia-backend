@@ -7,8 +7,17 @@ class Product(models.Model):
     store = models.ForeignKey(Store, on_delete=models.CASCADE, related_name='products')
     name = models.CharField(max_length=255)
     description = models.TextField()
+    CATEGORY_CHOICES = [
+        ('FISHING_GEAR', 'Fishing Gear'),
+        ('DIVING_GEAR', 'Diving Gear'),
+        ('MARINE_EQUIPMENT', 'Marine Equipment'),
+        ('OCEAN_APPAREL', 'Ocean Apparel'),
+        ('OCEAN_ACCESSORIES', 'Ocean Accessories'),
+        ('OTHER', 'Other'),
+    ]
     price = models.DecimalField(max_digits=12, decimal_places=2)
     stock = models.IntegerField(default=0)
+    category = models.CharField(max_length=50, choices=CATEGORY_CHOICES, default='OTHER')
     image_url = models.URLField(blank=True, null=True)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
