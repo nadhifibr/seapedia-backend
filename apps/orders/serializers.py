@@ -30,7 +30,9 @@ class OrderSerializer(serializers.ModelSerializer):
 class CheckoutSummarySerializer(serializers.Serializer):
     delivery_method = serializers.ChoiceField(choices=Order.DELIVERY_METHOD_CHOICES)
     address_id = serializers.UUIDField(required=False, allow_null=True)
+    discount_code = serializers.CharField(required=False, allow_null=True, allow_blank=True)
 
 class CheckoutSerializer(serializers.Serializer):
     delivery_method = serializers.ChoiceField(choices=Order.DELIVERY_METHOD_CHOICES)
     address_id = serializers.UUIDField()
+    discount_code = serializers.CharField(required=False, allow_null=True, allow_blank=True)

@@ -10,7 +10,28 @@ from apps.cart.models import CartItem
 from apps.addresses.models import DeliveryAddress
 from apps.wallet.models import WalletTransaction
 from decimal import Decimal
+from django.utils import timezone
+from apps.discounts.models import Discount
 
+def calculate_discount_amount(discount, subtotal):
+    if not discount or not discount.is_active or discount.expires_at < timezone.now():
+        return Decimal('0.00'), None
+        
+    if discount.type == 'VOUCHER':
+        voucher = getattr(discount, 'voucher', None)
+        if voucher and voucher.used_count >= voucher.max_usage:
+            return Decimal('0.00'), None
+            
+    amount = Decimal('0.00')
+    if discount.value_type == 'PERCENT':
+        amount = subtotal * (discount.value / Decimal('100.00'))
+    else:
+        amount = discount.value
+        
+    if amount > subtotal:
+        amount = subtotal
+        
+    return amount.quantize(Decimal('0.00')), discount
 DELIVERY_FEES = {
     'INSTANT': Decimal('50000.00'),
     'NEXT_DAY': Decimal('20000.00'),
@@ -27,17 +48,19 @@ class OrderViewSet(viewsets.ReadOnlyModelViewSet):
             return Order.objects.filter(buyer=user.buyer_profile).order_by('-created_at')
         return Order.objects.none()
 
-    @action(detail=False, methods=['post', 'get'])
+    @action(detail=False, methods=['post', 'get'], url_path='checkout-summary')
     def checkout_summary(self, request):
         if request.method == 'GET':
             # Support params from query for GET
             delivery_method = request.query_params.get('delivery_method', 'REGULAR')
             address_id = request.query_params.get('address_id')
+            discount_code = request.query_params.get('discount_code')
         else:
             serializer = CheckoutSummarySerializer(data=request.data)
             serializer.is_valid(raise_exception=True)
             delivery_method = serializer.validated_data['delivery_method']
             address_id = serializer.validated_data.get('address_id')
+            discount_code = serializer.validated_data.get('discount_code')
 
         user = request.user
         try:
@@ -55,9 +78,16 @@ class OrderViewSet(viewsets.ReadOnlyModelViewSet):
             return Response({'detail': 'Cart is empty.'}, status=status.HTTP_400_BAD_REQUEST)
 
         subtotal = sum((item.product.price * item.quantity) for item in cart_items)
+        
+        discount_amount = Decimal('0.00')
+        applied_discount = None
+        if discount_code:
+            discount = Discount.objects.filter(code=discount_code).first()
+            discount_amount, applied_discount = calculate_discount_amount(discount, subtotal)
+            
         delivery_fee = DELIVERY_FEES.get(delivery_method, Decimal('0.00'))
-        tax_amount = (subtotal * Decimal('0.12')).quantize(Decimal('0.00'))
-        total = subtotal + delivery_fee + tax_amount
+        tax_amount = ((subtotal - discount_amount) * Decimal('0.12')).quantize(Decimal('0.00'))
+        total = (subtotal - discount_amount) + delivery_fee + tax_amount
 
         # Find address
         address = None
@@ -87,6 +117,8 @@ class OrderViewSet(viewsets.ReadOnlyModelViewSet):
         return Response({
             'items': items_data,
             'subtotal': subtotal,
+            'discount_amount': discount_amount,
+            'discount_type': applied_discount.type if applied_discount else None,
             'delivery_fee': delivery_fee,
             'tax_amount': tax_amount,
             'total': total,
@@ -96,12 +128,13 @@ class OrderViewSet(viewsets.ReadOnlyModelViewSet):
             'store_name': cart.store.name,
         })
 
-    @action(detail=False, methods=['post'])
+    @action(detail=False, methods=['post'], url_path='checkout')
     def checkout(self, request):
         serializer = CheckoutSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         delivery_method = serializer.validated_data['delivery_method']
         address_id = serializer.validated_data['address_id']
+        discount_code = serializer.validated_data.get('discount_code')
 
         user = request.user
         try:
@@ -127,9 +160,19 @@ class OrderViewSet(viewsets.ReadOnlyModelViewSet):
             cart_items_list = list(cart_items_qs)
             
             subtotal = sum((item.product.price * item.quantity) for item in cart_items_list)
+            
+            discount_amount = Decimal('0.00')
+            applied_discount = None
+            if discount_code:
+                discount = Discount.objects.filter(code=discount_code).first()
+                discount_amount, applied_discount = calculate_discount_amount(discount, subtotal)
+                
+                if not applied_discount:
+                     return Response({'detail': 'Invalid or expired discount code.'}, status=status.HTTP_400_BAD_REQUEST)
+                
             delivery_fee = DELIVERY_FEES.get(delivery_method, Decimal('0.00'))
-            tax_amount = (subtotal * Decimal('0.12')).quantize(Decimal('0.00'))
-            total = subtotal + delivery_fee + tax_amount
+            tax_amount = ((subtotal - discount_amount) * Decimal('0.12')).quantize(Decimal('0.00'))
+            total = (subtotal - discount_amount) + delivery_fee + tax_amount
 
             # Check wallet balance
             if buyer.wallet_balance < total:
@@ -141,6 +184,13 @@ class OrderViewSet(viewsets.ReadOnlyModelViewSet):
                     return Response({'detail': f'Insufficient stock for {item.product.name}.'}, status=status.HTTP_400_BAD_REQUEST)
                 item.product.stock -= item.quantity
                 item.product.save()
+                
+            # Increment voucher usage if applicable
+            if applied_discount and applied_discount.type == 'VOUCHER':
+                from apps.discounts.models import Voucher
+                voucher = Voucher.objects.select_for_update().get(id=applied_discount.voucher.id)
+                voucher.used_count += 1
+                voucher.save()
 
             # Deduct wallet
             buyer.wallet_balance -= total
@@ -157,10 +207,11 @@ class OrderViewSet(viewsets.ReadOnlyModelViewSet):
             order = Order.objects.create(
                 buyer=buyer,
                 store=cart.store,
+                discount=applied_discount,
                 delivery_method=delivery_method,
                 address_snapshot=address_snapshot,
                 subtotal=subtotal,
-                discount_amount=Decimal('0.00'),
+                discount_amount=discount_amount,
                 delivery_fee=delivery_fee,
                 tax_amount=tax_amount,
                 total=total,
