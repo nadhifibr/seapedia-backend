@@ -1,8 +1,8 @@
 from rest_framework import generics
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.exceptions import PermissionDenied
 from .models import Product
-from .serializers import ProductSerializer
+from .serializers import ProductSerializer, PublicProductSerializer
 
 class SellerProductListCreateView(generics.ListCreateAPIView):
     serializer_class = ProductSerializer
@@ -32,3 +32,13 @@ class SellerProductDetailView(generics.RetrieveUpdateDestroyAPIView):
         if hasattr(user, 'seller_profile') and hasattr(user.seller_profile, 'store'):
             return Product.objects.filter(store=user.seller_profile.store)
         return Product.objects.none()
+
+class PublicProductListView(generics.ListAPIView):
+    queryset = Product.objects.filter(is_active=True).order_by('-created_at')
+    serializer_class = PublicProductSerializer
+    permission_classes = [AllowAny]
+
+class PublicProductDetailView(generics.RetrieveAPIView):
+    queryset = Product.objects.filter(is_active=True)
+    serializer_class = PublicProductSerializer
+    permission_classes = [AllowAny]

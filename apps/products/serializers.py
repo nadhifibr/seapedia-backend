@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from apps.stores.serializers import StoreSerializer
 from .models import Product
 
 class ProductSerializer(serializers.ModelSerializer):
@@ -13,3 +14,10 @@ class ProductSerializer(serializers.ModelSerializer):
         if value < 0:
             raise serializers.ValidationError("Stock tidak boleh kurang dari 0.")
         return value
+
+class PublicProductSerializer(serializers.ModelSerializer):
+    store = StoreSerializer(read_only=True)
+    
+    class Meta:
+        model = Product
+        fields = ['id', 'store', 'name', 'description', 'price', 'stock', 'is_active', 'created_at']
