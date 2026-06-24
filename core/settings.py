@@ -58,6 +58,7 @@ INSTALLED_APPS = [
     'apps.orders',
     'apps.discounts',
     'apps.deliveries',
+    'apps.admin_panel',
 ]
 
 AUTH_USER_MODEL = 'users.User'
