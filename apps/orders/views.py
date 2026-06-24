@@ -40,11 +40,46 @@ def calculate_discount_amount(discount, subtotal):
         amount = subtotal
         
     return amount.quantize(Decimal('0.00')), discount
-DELIVERY_FEES = {
-    'INSTANT': Decimal('50000.00'),
-    'NEXT_DAY': Decimal('20000.00'),
-    'REGULAR': Decimal('10000.00'),
-}
+    return amount.quantize(Decimal('0.00')), discount
+
+def get_delivery_tier(loc1, loc2):
+    if not loc1 or not loc2:
+        return 3 # Default to Tier 3 if locations are unknown
+        
+    if loc1 == loc2:
+        return 1
+        
+    TIER_1_PAIRS = {
+        frozenset(['JAKARTA', 'TANGERANG']), frozenset(['JAKARTA', 'ANYER']), frozenset(['TANGERANG', 'ANYER']),
+        frozenset(['SURABAYA', 'BALI']), frozenset(['BALI', 'LOMBOK'])
+    }
+    
+    TIER_2_PAIRS = {
+        frozenset(['JAKARTA', 'SURABAYA']), frozenset(['JAKARTA', 'BALI']), frozenset(['JAKARTA', 'LOMBOK']), frozenset(['JAKARTA', 'BATAM']),
+        frozenset(['TANGERANG', 'SURABAYA']), frozenset(['TANGERANG', 'BALI']), frozenset(['TANGERANG', 'LOMBOK']), frozenset(['TANGERANG', 'BATAM']),
+        frozenset(['ANYER', 'SURABAYA']), frozenset(['ANYER', 'BALI']), frozenset(['ANYER', 'LOMBOK']), frozenset(['ANYER', 'BATAM']),
+        frozenset(['SURABAYA', 'LOMBOK']), frozenset(['SURABAYA', 'MAKASSAR']), frozenset(['BALI', 'MAKASSAR']), frozenset(['LOMBOK', 'MAKASSAR']),
+        frozenset(['MAKASSAR', 'MANADO']), frozenset(['MAKASSAR', 'RAJA_AMPAT']), frozenset(['MANADO', 'RAJA_AMPAT'])
+    }
+    
+    pair = frozenset([loc1, loc2])
+    if pair in TIER_1_PAIRS:
+        return 1
+    elif pair in TIER_2_PAIRS:
+        return 2
+    else:
+        return 3
+
+def get_delivery_fee(delivery_method, loc1, loc2):
+    tier = get_delivery_tier(loc1, loc2)
+    if tier == 1:
+        fees = {'INSTANT': Decimal('50000.00'), 'NEXT_DAY': Decimal('20000.00'), 'REGULAR': Decimal('10000.00')}
+    elif tier == 2:
+        fees = {'INSTANT': Decimal('100000.00'), 'NEXT_DAY': Decimal('50000.00'), 'REGULAR': Decimal('30000.00')}
+    else:
+        fees = {'INSTANT': Decimal('200000.00'), 'NEXT_DAY': Decimal('100000.00'), 'REGULAR': Decimal('60000.00')}
+        
+    return fees.get(delivery_method, Decimal('0.00'))
 
 class OrderViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated, IsActiveBuyer]
@@ -108,17 +143,26 @@ class OrderViewSet(viewsets.ReadOnlyModelViewSet):
             discount = Discount.objects.filter(code=discount_code).first()
             discount_amount, applied_discount = calculate_discount_amount(discount, subtotal)
             
-        delivery_fee = DELIVERY_FEES.get(delivery_method, Decimal('0.00'))
-        tax_amount = ((subtotal - discount_amount) * Decimal('0.12')).quantize(Decimal('0.00'))
-        total = (subtotal - discount_amount) + delivery_fee + tax_amount
-
         # Find address
         address = None
         if address_id:
             address = DeliveryAddress.objects.filter(id=address_id, buyer=buyer).first()
         if not address:
             address = DeliveryAddress.objects.filter(buyer=buyer, is_default=True).first()
+
+        buyer_location = address.location if address else None
+        store_location = cart.store.location if cart.store else None
+
+        delivery_fee = get_delivery_fee(delivery_method, store_location, buyer_location)
+        tax_amount = ((subtotal - discount_amount) * Decimal('0.12')).quantize(Decimal('0.00'))
+        total = (subtotal - discount_amount) + delivery_fee + tax_amount
         
+        available_delivery_fees = {
+            'INSTANT': get_delivery_fee('INSTANT', store_location, buyer_location),
+            'NEXT_DAY': get_delivery_fee('NEXT_DAY', store_location, buyer_location),
+            'REGULAR': get_delivery_fee('REGULAR', store_location, buyer_location)
+        }
+
         address_info = None
         if address:
             address_info = {
@@ -143,6 +187,7 @@ class OrderViewSet(viewsets.ReadOnlyModelViewSet):
             'discount_amount': discount_amount,
             'discount_type': applied_discount.type if applied_discount else None,
             'delivery_fee': delivery_fee,
+            'available_delivery_fees': available_delivery_fees,
             'tax_amount': tax_amount,
             'total': total,
             'delivery_method': delivery_method,
@@ -193,7 +238,10 @@ class OrderViewSet(viewsets.ReadOnlyModelViewSet):
                 if not applied_discount:
                      return Response({'detail': 'Invalid or expired discount code.'}, status=status.HTTP_400_BAD_REQUEST)
                 
-            delivery_fee = DELIVERY_FEES.get(delivery_method, Decimal('0.00'))
+            buyer_location = address.location
+            store_location = cart.store.location if cart.store else None
+            
+            delivery_fee = get_delivery_fee(delivery_method, store_location, buyer_location)
             tax_amount = ((subtotal - discount_amount) * Decimal('0.12')).quantize(Decimal('0.00'))
             total = (subtotal - discount_amount) + delivery_fee + tax_amount
 
