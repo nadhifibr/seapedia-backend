@@ -60,3 +60,4 @@ class PublicStoreDetailView(generics.RetrieveAPIView):
     queryset = Store.objects.all()
     serializer_class = StoreSerializer
     permission_classes = [AllowAny]
+    lookup_field = 'slug'

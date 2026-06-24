@@ -35,9 +35,15 @@ class SellerProductDetailView(generics.RetrieveUpdateDestroyAPIView):
         return Product.objects.none()
 
 class PublicProductListView(generics.ListAPIView):
-    queryset = Product.objects.filter(is_active=True).order_by('-created_at')
     serializer_class = PublicProductSerializer
     permission_classes = [AllowAny]
+
+    def get_queryset(self):
+        queryset = Product.objects.filter(is_active=True).order_by('-created_at')
+        store_slug = self.request.query_params.get('store_slug')
+        if store_slug:
+            queryset = queryset.filter(store__slug=store_slug)
+        return queryset
 
 class PublicProductDetailView(generics.RetrieveAPIView):
     queryset = Product.objects.filter(is_active=True)
