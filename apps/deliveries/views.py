@@ -20,9 +20,17 @@ class DeliveryJobViewSet(viewsets.ReadOnlyModelViewSet):
             return DeliveryJob.objects.none()
             
         # Show jobs that are available OR belong to the current driver
-        return DeliveryJob.objects.filter(
-            Q(status='AVAILABLE') | Q(driver=user.driver_profile)
-        ).order_by('-order__created_at')
+        available_jobs = DeliveryJob.objects.filter(status='AVAILABLE')
+        
+        # Multirole Protection: Don't show jobs where the driver is the buyer or the seller
+        if hasattr(user, 'buyer_profile'):
+            available_jobs = available_jobs.exclude(order__buyer=user.buyer_profile)
+        if hasattr(user, 'seller_profile') and hasattr(user.seller_profile, 'store'):
+            available_jobs = available_jobs.exclude(order__store=user.seller_profile.store)
+            
+        my_jobs = DeliveryJob.objects.filter(driver=user.driver_profile)
+        
+        return (available_jobs | my_jobs).order_by('-order__created_at')
 
     @action(detail=True, methods=['post'], url_path='take')
     def take_job(self, request, pk=None):
@@ -40,6 +48,12 @@ class DeliveryJobViewSet(viewsets.ReadOnlyModelViewSet):
                 
             if job.order.status != 'MENUNGGU_PENGIRIM':
                 return Response({'detail': 'Order is not ready for delivery.'}, status=status.HTTP_400_BAD_REQUEST)
+                
+            # Multirole Protection Validation
+            if hasattr(user, 'buyer_profile') and job.order.buyer == user.buyer_profile:
+                return Response({'detail': 'You cannot deliver your own orders.'}, status=status.HTTP_400_BAD_REQUEST)
+            if hasattr(user, 'seller_profile') and hasattr(user.seller_profile, 'store') and job.order.store == user.seller_profile.store:
+                return Response({'detail': 'You cannot deliver orders from your own store.'}, status=status.HTTP_400_BAD_REQUEST)
                 
             # Update Job
             job.status = 'TAKEN'

@@ -49,6 +49,11 @@ class CartItemView(BuyerPermissionMixin, APIView):
             
         if product.stock < quantity:
             return Response({'detail': 'Not enough stock'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        # Self-purchase validation
+        if hasattr(request.user, 'seller_profile') and hasattr(request.user.seller_profile, 'store'):
+            if product.store == request.user.seller_profile.store:
+                return Response({'detail': 'You cannot add your own products to the cart.'}, status=status.HTTP_400_BAD_REQUEST)
 
         # Single store validation
         if cart.store and cart.store != product.store:
