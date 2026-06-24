@@ -2,6 +2,7 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from apps.users.permissions import IsActiveBuyer, IsActiveSeller
 from django.db import transaction
 from django.db.models import Sum, F
 from django.shortcuts import get_object_or_404
@@ -46,7 +47,7 @@ DELIVERY_FEES = {
 }
 
 class OrderViewSet(viewsets.ReadOnlyModelViewSet):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsActiveBuyer]
     serializer_class = OrderSerializer
 
     def get_queryset(self):
@@ -275,7 +276,7 @@ class OrderViewSet(viewsets.ReadOnlyModelViewSet):
         return Response(OrderSerializer(order).data, status=status.HTTP_201_CREATED)
 
 class SellerOrderViewSet(viewsets.ReadOnlyModelViewSet):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsActiveSeller]
     serializer_class = OrderSerializer
 
     def get_queryset(self):

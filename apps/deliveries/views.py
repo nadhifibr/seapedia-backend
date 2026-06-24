@@ -2,6 +2,7 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from apps.users.permissions import IsActiveDriver
 from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
@@ -10,7 +11,7 @@ from .serializers import DeliveryJobSerializer
 from apps.orders.models import OrderStatusHistory
 
 class DeliveryJobViewSet(viewsets.ReadOnlyModelViewSet):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsActiveDriver]
     serializer_class = DeliveryJobSerializer
 
     def get_queryset(self):

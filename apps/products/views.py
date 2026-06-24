@@ -1,12 +1,13 @@
 from rest_framework import generics
 from rest_framework.permissions import IsAuthenticated, AllowAny
+from apps.users.permissions import IsActiveSeller
 from rest_framework.exceptions import PermissionDenied
 from .models import Product
 from .serializers import ProductSerializer, PublicProductSerializer
 
 class SellerProductListCreateView(generics.ListCreateAPIView):
     serializer_class = ProductSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsActiveSeller]
 
     def get_queryset(self):
         user = self.request.user
@@ -25,7 +26,7 @@ class SellerProductListCreateView(generics.ListCreateAPIView):
 
 class SellerProductDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = ProductSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsActiveSeller]
 
     def get_queryset(self):
         user = self.request.user

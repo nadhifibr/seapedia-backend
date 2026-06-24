@@ -2,17 +2,16 @@ from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
+from apps.users.permissions import IsActiveBuyer
 from django.db import transaction
 from .models import WalletTransaction
 from .serializers import WalletTransactionSerializer, TopupSerializer
 from apps.users.models import BuyerProfile
 
 class BuyerPermissionMixin:
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsActiveBuyer]
     
     def get_buyer_profile(self, user):
-        if not user.roles.filter(role='BUYER').exists():
-            return None
         try:
             return user.buyer_profile
         except BuyerProfile.DoesNotExist:

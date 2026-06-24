@@ -2,11 +2,12 @@ from rest_framework import generics, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
+from apps.users.permissions import IsActiveSeller
 from .models import Store
 from .serializers import StoreSerializer
 
 class MyStoreView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsActiveSeller]
 
     def get(self, request):
         if not hasattr(request.user, 'seller_profile'):

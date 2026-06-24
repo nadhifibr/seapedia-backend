@@ -1,5 +1,6 @@
 from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated
+from apps.users.permissions import IsActiveBuyer
 from rest_framework.exceptions import PermissionDenied
 from django.db import transaction
 from .models import DeliveryAddress
@@ -7,11 +8,9 @@ from .serializers import DeliveryAddressSerializer
 from apps.users.models import BuyerProfile
 
 class BuyerPermissionMixin:
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsActiveBuyer]
     
     def get_buyer_profile(self, user):
-        if not user.roles.filter(role='BUYER').exists():
-            raise PermissionDenied("Only buyers can manage addresses.")
         try:
             return user.buyer_profile
         except BuyerProfile.DoesNotExist:

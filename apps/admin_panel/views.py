@@ -2,6 +2,7 @@ from rest_framework.views import APIView
 from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, BasePermission
+from apps.users.permissions import IsActiveAdmin
 from rest_framework.pagination import PageNumberPagination
 from django.utils.timezone import now
 
@@ -24,6 +25,8 @@ from .serializers import (
 
 class IsAdminRole(BasePermission):
     def has_permission(self, request, view):
+        # We now rely on IsActiveAdmin for the token validation.
+        # This keeps the legacy check just in case, but IsActiveAdmin is stricter.
         return request.user.is_authenticated and UserRole.objects.filter(user=request.user, role='ADMIN').exists()
 
 class StandardResultsSetPagination(PageNumberPagination):
@@ -32,7 +35,7 @@ class StandardResultsSetPagination(PageNumberPagination):
     max_page_size = 100
 
 class AdminDashboardView(APIView):
-    permission_classes = [IsAuthenticated, IsAdminRole]
+    permission_classes = [IsAuthenticated, IsAdminRole, IsActiveAdmin]
 
     def get(self, request):
         user_count = User.objects.count()
@@ -57,50 +60,50 @@ class AdminDashboardView(APIView):
         return Response(data)
 
 class AdminUsersView(ListAPIView):
-    permission_classes = [IsAuthenticated, IsAdminRole]
+    permission_classes = [IsAuthenticated, IsAdminRole, IsActiveAdmin]
     queryset = User.objects.all().order_by('-created_at')
     serializer_class = AdminUserSerializer
     pagination_class = StandardResultsSetPagination
 
 class AdminStoresView(ListAPIView):
-    permission_classes = [IsAuthenticated, IsAdminRole]
+    permission_classes = [IsAuthenticated, IsAdminRole, IsActiveAdmin]
     queryset = Store.objects.all().order_by('-created_at')
     serializer_class = AdminStoreSerializer
     pagination_class = StandardResultsSetPagination
 
 class AdminProductsView(ListAPIView):
-    permission_classes = [IsAuthenticated, IsAdminRole]
+    permission_classes = [IsAuthenticated, IsAdminRole, IsActiveAdmin]
     queryset = Product.objects.all().order_by('-created_at')
     serializer_class = AdminProductSerializer
     pagination_class = StandardResultsSetPagination
 
 class AdminOrdersView(ListAPIView):
-    permission_classes = [IsAuthenticated, IsAdminRole]
+    permission_classes = [IsAuthenticated, IsAdminRole, IsActiveAdmin]
     queryset = Order.objects.all().order_by('-created_at')
     serializer_class = AdminOrderSerializer
     pagination_class = StandardResultsSetPagination
 
 class AdminDiscountsView(ListAPIView):
-    permission_classes = [IsAuthenticated, IsAdminRole]
+    permission_classes = [IsAuthenticated, IsAdminRole, IsActiveAdmin]
     queryset = Discount.objects.all().order_by('-expires_at')
     serializer_class = AdminDiscountSerializer
     pagination_class = StandardResultsSetPagination
 
 class AdminDeliveryJobsView(ListAPIView):
-    permission_classes = [IsAuthenticated, IsAdminRole]
+    permission_classes = [IsAuthenticated, IsAdminRole, IsActiveAdmin]
     queryset = DeliveryJob.objects.all().order_by('-taken_at')
     serializer_class = AdminDeliveryJobSerializer
     pagination_class = StandardResultsSetPagination
 
 class TriggerOverdueView(APIView):
-    permission_classes = [IsAuthenticated, IsAdminRole]
+    permission_classes = [IsAuthenticated, IsAdminRole, IsActiveAdmin]
 
     def post(self, request):
         count = process_overdue_orders()
         return Response({'detail': f'Successfully processed {count} overdue orders.'}, status=status.HTTP_200_OK)
 
 class SimulateTimeView(APIView):
-    permission_classes = [IsAuthenticated, IsAdminRole]
+    permission_classes = [IsAuthenticated, IsAdminRole, IsActiveAdmin]
 
     def post(self, request):
         days = request.data.get('days', 1)
