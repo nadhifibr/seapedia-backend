@@ -1,3 +1,4 @@
+from django.db.models import Q
 from rest_framework import generics, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -52,9 +53,18 @@ class MyStoreView(APIView):
         return self.patch(request)
 
 class PublicStoreListView(generics.ListAPIView):
-    queryset = Store.objects.all().order_by('-created_at')
     serializer_class = StoreSerializer
     permission_classes = [AllowAny]
+
+    def get_queryset(self):
+        queryset = Store.objects.all().order_by('-created_at')
+        q = self.request.query_params.get('q')
+        if q:
+            queryset = queryset.filter(
+                Q(name__icontains=q) |
+                Q(description__icontains=q)
+            )
+        return queryset
 
 class PublicStoreDetailView(generics.RetrieveAPIView):
     queryset = Store.objects.all()
