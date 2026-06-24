@@ -1,7 +1,8 @@
 from django.urls import path
 from .views import (
     AdminDashboardView, AdminUsersView, AdminStoresView,
-    AdminProductsView, AdminOrdersView, AdminDiscountsView, AdminDeliveryJobsView
+    AdminProductsView, AdminOrdersView, AdminDiscountsView, AdminDeliveryJobsView,
+    TriggerOverdueView, SimulateTimeView
 )
 
 urlpatterns = [
@@ -12,4 +13,6 @@ urlpatterns = [
     path('orders/', AdminOrdersView.as_view(), name='admin_orders'),
     path('discounts/', AdminDiscountsView.as_view(), name='admin_discounts'),
     path('deliveries/', AdminDeliveryJobsView.as_view(), name='admin_deliveries'),
+    path('orders/trigger-overdue/', TriggerOverdueView.as_view(), name='trigger_overdue'),
+    path('orders/simulate-time/', SimulateTimeView.as_view(), name='simulate_time'),
 ]

@@ -12,6 +12,11 @@ from apps.orders.models import Order
 from apps.discounts.models import Discount
 from apps.deliveries.models import DeliveryJob
 
+from apps.orders.services import process_overdue_orders
+from rest_framework import status
+from datetime import timedelta
+from django.db.models import F
+
 from .serializers import (
     AdminUserSerializer, AdminStoreSerializer, AdminProductSerializer,
     AdminOrderSerializer, AdminDiscountSerializer, AdminDeliveryJobSerializer
@@ -86,3 +91,21 @@ class AdminDeliveryJobsView(ListAPIView):
     queryset = DeliveryJob.objects.all().order_by('-taken_at')
     serializer_class = AdminDeliveryJobSerializer
     pagination_class = StandardResultsSetPagination
+
+class TriggerOverdueView(APIView):
+    permission_classes = [IsAuthenticated, IsAdminRole]
+
+    def post(self, request):
+        count = process_overdue_orders()
+        return Response({'detail': f'Successfully processed {count} overdue orders.'}, status=status.HTTP_200_OK)
+
+class SimulateTimeView(APIView):
+    permission_classes = [IsAuthenticated, IsAdminRole]
+
+    def post(self, request):
+        days = request.data.get('days', 1)
+        # Shift overdue_at back by `days` to simulate time passing
+        orders = Order.objects.filter(status__in=['SEDANG_DIKEMAS', 'MENUNGGU_PENGIRIM', 'SEDANG_DIKIRIM'], is_refunded=False)
+        updated = orders.update(overdue_at=F('overdue_at') - timedelta(days=int(days)))
+        
+        return Response({'detail': f'Simulated {days} days passing. Affected {updated} active orders.'}, status=status.HTTP_200_OK)

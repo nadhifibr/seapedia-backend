@@ -11,6 +11,7 @@ from apps.cart.models import CartItem
 from apps.addresses.models import DeliveryAddress
 from apps.wallet.models import WalletTransaction
 from decimal import Decimal
+from datetime import timedelta
 from django.utils import timezone
 from apps.discounts.models import Discount
 from apps.deliveries.models import DeliveryJob
@@ -220,6 +221,15 @@ class OrderViewSet(viewsets.ReadOnlyModelViewSet):
                 description=f"Payment for checkout"
             )
 
+            # Calculate overdue_at based on SLA
+            now = timezone.now()
+            if delivery_method == 'INSTANT':
+                overdue_at = now + timedelta(days=1)
+            elif delivery_method == 'NEXT_DAY':
+                overdue_at = now + timedelta(days=2)
+            else:
+                overdue_at = now + timedelta(days=5)
+
             # Create Order
             order = Order.objects.create(
                 buyer=buyer,
@@ -232,7 +242,8 @@ class OrderViewSet(viewsets.ReadOnlyModelViewSet):
                 delivery_fee=delivery_fee,
                 tax_amount=tax_amount,
                 total=total,
-                status='SEDANG_DIKEMAS'
+                status='SEDANG_DIKEMAS',
+                overdue_at=overdue_at
             )
 
             # Create OrderItems

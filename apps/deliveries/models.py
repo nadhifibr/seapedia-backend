@@ -8,6 +8,7 @@ class DeliveryJob(models.Model):
         ('AVAILABLE', 'Available'),
         ('TAKEN', 'Taken'),
         ('DONE', 'Done'),
+        ('CANCELLED', 'Cancelled'),
     ]
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     order = models.OneToOneField(Order, on_delete=models.CASCADE, related_name='delivery_job')
