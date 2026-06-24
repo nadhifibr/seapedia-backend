@@ -15,6 +15,7 @@ from datetime import timedelta
 from django.utils import timezone
 from apps.discounts.models import Discount
 from apps.deliveries.models import DeliveryJob
+from rest_framework.exceptions import ValidationError
 
 def calculate_discount_amount(discount, subtotal):
     if not discount or not discount.is_active or discount.expires_at < timezone.now():
@@ -29,6 +30,9 @@ def calculate_discount_amount(discount, subtotal):
     if discount.value_type == 'PERCENT':
         amount = subtotal * (discount.value / Decimal('100.00'))
     else:
+        min_purchase = discount.value * 2
+        if subtotal < min_purchase:
+            raise ValidationError({'detail': f'Minimum purchase of Rp {min_purchase:,.0f} is required for this discount.'})
         amount = discount.value
         
     if amount > subtotal:

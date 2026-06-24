@@ -1,5 +1,7 @@
 import uuid
 from django.db import models
+from django.core.validators import MinValueValidator
+from decimal import Decimal
 
 class Discount(models.Model):
     TYPE_CHOICES = [
@@ -13,7 +15,7 @@ class Discount(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     type = models.CharField(max_length=20, choices=TYPE_CHOICES)
     code = models.CharField(max_length=50, unique=True)
-    value = models.DecimalField(max_digits=12, decimal_places=2)
+    value = models.DecimalField(max_digits=12, decimal_places=2, validators=[MinValueValidator(Decimal('0.00'))])
     value_type = models.CharField(max_length=20, choices=VALUE_TYPE_CHOICES)
     expires_at = models.DateTimeField()
     is_active = models.BooleanField(default=True)
@@ -21,7 +23,7 @@ class Discount(models.Model):
 class Voucher(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     discount = models.OneToOneField(Discount, on_delete=models.CASCADE, related_name='voucher')
-    max_usage = models.IntegerField()
+    max_usage = models.IntegerField(validators=[MinValueValidator(1)])
     used_count = models.IntegerField(default=0)
 
 class Promo(models.Model):

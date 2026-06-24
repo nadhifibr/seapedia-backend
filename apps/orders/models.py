@@ -1,6 +1,7 @@
 import uuid
 from django.db import models
 from apps.users.models import BuyerProfile
+from django.core.validators import MinValueValidator
 from apps.stores.models import Store
 from apps.products.models import Product
 from apps.discounts.models import Discount
@@ -40,7 +41,7 @@ class OrderItem(models.Model):
     product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True, blank=True, related_name='order_items')
     product_name = models.CharField(max_length=255)
     price_snapshot = models.DecimalField(max_digits=12, decimal_places=2)
-    quantity = models.IntegerField()
+    quantity = models.IntegerField(validators=[MinValueValidator(1)])
 
 class OrderStatusHistory(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
