@@ -59,11 +59,16 @@ class PublicStoreListView(generics.ListAPIView):
     def get_queryset(self):
         queryset = Store.objects.all().order_by('-created_at')
         q = self.request.query_params.get('q')
+        location = self.request.query_params.get('location')
+        
         if q:
             queryset = queryset.filter(
                 Q(name__icontains=q) |
                 Q(description__icontains=q)
             )
+        if location and location != 'ALL':
+            queryset = queryset.filter(location=location)
+            
         return queryset
 
 class PublicStoreDetailView(generics.RetrieveAPIView):

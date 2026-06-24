@@ -61,7 +61,12 @@ class PublicProductListView(generics.ListAPIView):
         if category and category != 'ALL':
             queryset = queryset.filter(category=category)
             
-        # 4. Sorting
+        # 4. Location Filter (from store)
+        location = self.request.query_params.get('location')
+        if location and location != 'ALL':
+            queryset = queryset.filter(store__location=location)
+            
+        # 5. Sorting
         sort = self.request.query_params.get('sort', 'newest')
         if sort == 'price_asc':
             queryset = queryset.order_by('price')
