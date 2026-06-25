@@ -59,12 +59,28 @@ class PublicProductListView(generics.ListAPIView):
         # 3. Category Filter
         category = self.request.query_params.get('category')
         if category and category != 'ALL':
-            queryset = queryset.filter(category=category)
+            categories = category.split(',')
+            queryset = queryset.filter(category__in=categories)
             
         # 4. Location Filter (from store)
         location = self.request.query_params.get('location')
         if location and location != 'ALL':
-            queryset = queryset.filter(store__location=location)
+            locations = location.split(',')
+            queryset = queryset.filter(store__location__in=locations)
+            
+        # 5. Rating Filter
+        min_rating = self.request.query_params.get('min_rating')
+        if min_rating:
+            queryset = queryset.filter(average_rating__gte=min_rating)
+            
+        # 6. Price Filter
+        min_price = self.request.query_params.get('min_price')
+        if min_price:
+            queryset = queryset.filter(price__gte=min_price)
+            
+        max_price = self.request.query_params.get('max_price')
+        if max_price:
+            queryset = queryset.filter(price__lte=max_price)
             
         # 5. Sorting
         sort = self.request.query_params.get('sort', 'newest')

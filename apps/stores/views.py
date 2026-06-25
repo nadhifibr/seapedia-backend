@@ -67,7 +67,8 @@ class PublicStoreListView(generics.ListAPIView):
                 Q(description__icontains=q)
             )
         if location and location != 'ALL':
-            queryset = queryset.filter(location=location)
+            locations = location.split(',')
+            queryset = queryset.filter(location__in=locations)
             
         return queryset
 
