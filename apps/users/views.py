@@ -6,8 +6,10 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.tokens import RefreshToken
 from .serializers import (
     RegisterSerializer, CustomTokenObtainPairSerializer, 
-    UserProfileSerializer, SelectRoleSerializer, LogoutSerializer
+    UserProfileSerializer, SelectRoleSerializer, AddRoleSerializer, LogoutSerializer
 )
+from .models import UserRole, SellerProfile, DriverProfile
+from apps.stores.models import Store
 
 class RegisterView(generics.CreateAPIView):
     permission_classes = (AllowAny,)
@@ -48,6 +50,45 @@ class SelectRoleView(generics.GenericAPIView):
             return Response({"detail": f"User does not have '{role}' role."}, status=status.HTTP_400_BAD_REQUEST)
         
         # Generate new token with active_role
+        token = CustomTokenObtainPairSerializer.get_token(user)
+        token['active_role'] = role
+        
+        return Response({
+            'refresh': str(token),
+            'access': str(token.access_token),
+        }, status=status.HTTP_200_OK)
+
+class AddRoleView(generics.GenericAPIView):
+    permission_classes = (IsAuthenticated,)
+    serializer_class = AddRoleSerializer
+
+    def post(self, request):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        role = serializer.validated_data['role']
+        
+        user = request.user
+        roles = list(user.roles.values_list('role', flat=True))
+        
+        if 'ADMIN' in roles:
+            return Response({"detail": "Admin cannot add other roles."}, status=status.HTTP_400_BAD_REQUEST)
+            
+        if role in roles:
+            return Response({"detail": f"User already has '{role}' role."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        UserRole.objects.create(user=user, role=role)
+        
+        if role == 'SELLER':
+            profile, _ = SellerProfile.objects.get_or_create(user=user)
+            Store.objects.get_or_create(seller=profile, defaults={
+                'name': f"Toko {user.username}",
+                'slug': f"toko-{user.username}",
+                'description': f"Toko resmi milik {user.username}"
+            })
+        elif role == 'DRIVER':
+            DriverProfile.objects.get_or_create(user=user)
+            
+        # Generate new token with the new role active
         token = CustomTokenObtainPairSerializer.get_token(user)
         token['active_role'] = role
         

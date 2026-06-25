@@ -86,6 +86,9 @@ class UserProfileSerializer(serializers.ModelSerializer):
 class SelectRoleSerializer(serializers.Serializer):
     role = serializers.ChoiceField(choices=[('BUYER', 'BUYER'), ('SELLER', 'SELLER'), ('DRIVER', 'DRIVER')])
 
+class AddRoleSerializer(serializers.Serializer):
+    role = serializers.ChoiceField(choices=[('SELLER', 'SELLER'), ('DRIVER', 'DRIVER')])
+
 class LogoutSerializer(serializers.Serializer):
     refresh_token = serializers.CharField()
 
