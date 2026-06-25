@@ -2,6 +2,7 @@ import uuid
 from django.db import models
 from django.contrib.auth.models import AbstractUser, UserManager
 from django.contrib.auth.validators import UnicodeUsernameValidator
+from django.core.exceptions import ValidationError
 
 class CustomUserManager(UserManager):
     def create_superuser(self, username, email=None, password=None, **extra_fields):
@@ -38,6 +39,23 @@ class UserRole(models.Model):
 
     class Meta:
         unique_together = ('user', 'role')
+
+    def clean(self):
+        super().clean()
+        
+        # Admin restriction
+        if getattr(self, 'user', None):
+            existing_roles = self.user.roles.exclude(id=self.id).values_list('role', flat=True)
+            
+            if self.role == 'ADMIN' and existing_roles:
+                raise ValidationError("Admin tidak boleh memiliki role lain. User ini sudah memiliki role: " + ", ".join(existing_roles))
+            
+            if self.role != 'ADMIN' and 'ADMIN' in existing_roles:
+                raise ValidationError("User dengan role Admin tidak boleh ditambah role lain.")
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
 
 class BuyerProfile(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
