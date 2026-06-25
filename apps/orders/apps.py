@@ -6,6 +6,7 @@ class OrdersConfig(AppConfig):
     name = 'apps.orders'
 
     def ready(self):
+        import apps.orders.signals
         import os
         # Only start scheduler in the main process
         if os.environ.get('RUN_MAIN', None) == 'true':

@@ -21,5 +21,7 @@ class Product(models.Model):
     stock = models.IntegerField(default=0, validators=[MinValueValidator(1)])
     category = models.CharField(max_length=50, choices=CATEGORY_CHOICES, default='OTHER')
     image_url = models.URLField(blank=True, null=True)
+    sold_count = models.IntegerField(default=0, validators=[MinValueValidator(0)])
+    average_rating = models.DecimalField(max_digits=3, decimal_places=1, default=Decimal('0.0'))
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
