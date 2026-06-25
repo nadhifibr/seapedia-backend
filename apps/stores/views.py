@@ -52,9 +52,12 @@ class MyStoreView(APIView):
     def put(self, request):
         return self.patch(request)
 
+from core.pagination import StandardResultsSetPagination
+
 class PublicStoreListView(generics.ListAPIView):
     serializer_class = StoreSerializer
     permission_classes = [AllowAny]
+    pagination_class = StandardResultsSetPagination
 
     def get_queryset(self):
         queryset = Store.objects.all().order_by('-created_at')

@@ -35,9 +35,12 @@ class SellerProductDetailView(generics.RetrieveUpdateDestroyAPIView):
             return Product.objects.filter(store=user.seller_profile.store)
         return Product.objects.none()
 
+from core.pagination import StandardResultsSetPagination
+
 class PublicProductListView(generics.ListAPIView):
     serializer_class = PublicProductSerializer
     permission_classes = [AllowAny]
+    pagination_class = StandardResultsSetPagination
 
     def get_queryset(self):
         queryset = Product.objects.filter(is_active=True)
