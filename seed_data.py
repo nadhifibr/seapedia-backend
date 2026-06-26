@@ -169,10 +169,18 @@ def run_seed():
     if not Discount.objects.filter(code='VOUCHER50').exists():
         d1 = Discount.objects.create(type='VOUCHER', code='VOUCHER50', value=Decimal('50000.00'), value_type='FIXED', expires_at=timezone.now() + timedelta(days=30), is_active=True)
         Voucher.objects.create(discount=d1, max_usage=50, used_count=0)
-
+    
+    if not Discount.objects.filter(code='VOUCHER10K').exists():
+        d_new = Discount.objects.create(type='VOUCHER', code='VOUCHER10K', value=Decimal('10000.00'), value_type='FIXED', expires_at=timezone.now() + timedelta(days=15), is_active=True)
+        Voucher.objects.create(discount=d_new, max_usage=100, used_count=5)
+        
     if not Discount.objects.filter(code='PROMO10').exists():
         d2 = Discount.objects.create(type='PROMO', code='PROMO10', value=Decimal('10.00'), value_type='PERCENT', expires_at=timezone.now() + timedelta(days=30), is_active=True)
         Promo.objects.create(discount=d2, description='Special 10% discount for all items!')
+
+    if not Discount.objects.filter(code='PROMO25').exists():
+        d_new2 = Discount.objects.create(type='PROMO', code='PROMO25', value=Decimal('25.00'), value_type='PERCENT', expires_at=timezone.now() + timedelta(days=7), is_active=True)
+        Promo.objects.create(discount=d_new2, description='Flash sale 25% discount!')
 
     # 4. PRODUCTS
     print("Seeding products...")
@@ -215,39 +223,50 @@ def run_seed():
 
     # 7. ORDERS, DELIVERIES & REVIEWS
     print("Seeding orders, deliveries, and product reviews...")
+    statuses = ["MENUNGGU_PEMBAYARAN", "SEDANG_DIKEMAS", "MENUNGGU_PENGIRIM", "SEDANG_DIKIRIM", "PESANAN_SELESAI", "DIKEMBALIKAN"]
+    
     for buyer in buyers:
-        num_orders = random.randint(1, 3)
+        num_orders = random.randint(1, 4)
         for _ in range(num_orders):
             product = random.choice(all_products)
             qty = random.randint(1, 3)
             price = product.price
             subtotal = price * qty
             
+            chosen_status = random.choice(statuses)
+            
             order = Order.objects.create(
                 buyer=buyer, store=product.store, delivery_method="REGULAR", address_snapshot="Jl. Fiktif No. 123",
                 subtotal=subtotal, delivery_fee=Decimal('15000.00'), tax_amount=subtotal * Decimal('0.11'),
-                total=subtotal + Decimal('15000.00') + (subtotal * Decimal('0.11')), status="PESANAN_SELESAI"
+                total=subtotal + Decimal('15000.00') + (subtotal * Decimal('0.11')), status=chosen_status
             )
             
             OrderItem.objects.create(order=order, product=product, product_name=product.name, price_snapshot=price, quantity=qty)
             
-            OrderStatusHistory.objects.create(order=order, status="PESANAN_SELESAI", note="Pesanan telah diterima oleh pembeli.")
+            OrderStatusHistory.objects.create(order=order, status=chosen_status, note=f"Pesanan dalam status {chosen_status}.")
             
-            # Create a SellerTransaction
-            SellerTransaction.objects.get_or_create(
-                seller=product.store.seller, order=order, type="INCOME", defaults={"amount": subtotal}
-            )
+            # Create a SellerTransaction only if finished
+            if chosen_status == "PESANAN_SELESAI":
+                SellerTransaction.objects.get_or_create(
+                    seller=product.store.seller, order=order, type="INCOME", defaults={"amount": subtotal}
+                )
+                # Wallet Transaction for payment
+                WalletTransaction.objects.get_or_create(
+                    buyer=buyer, type="PAYMENT", amount=order.total, defaults={"description": f"Payment for order {order.id}"}
+                )
             
             # Create a DeliveryJob
-            if drivers:
-                driver = random.choice(drivers)
+            if drivers and chosen_status in ["MENUNGGU_PENGIRIM", "SEDANG_DIKIRIM", "PESANAN_SELESAI"]:
+                job_status = "AVAILABLE" if chosen_status == "MENUNGGU_PENGIRIM" else ("TAKEN" if chosen_status == "SEDANG_DIKIRIM" else "DONE")
+                driver = random.choice(drivers) if job_status != "AVAILABLE" else None
                 DeliveryJob.objects.create(
-                    order=order, driver=driver, status="DONE", driver_earning=Decimal('15000.00'),
-                    taken_at=timezone.now() - timedelta(days=1), completed_at=timezone.now()
+                    order=order, driver=driver, status=job_status, driver_earning=Decimal('15000.00'),
+                    taken_at=timezone.now() - timedelta(hours=5) if driver else None, 
+                    completed_at=timezone.now() if job_status == "DONE" else None
                 )
 
             # Product Review
-            if random.random() < 0.7:
+            if chosen_status == "PESANAN_SELESAI" and random.random() < 0.7:
                 if not ProductReview.objects.filter(product=product, buyer=buyer).exists():
                     rating = random.choices([1, 2, 3, 4, 5], weights=[0.05, 0.05, 0.1, 0.4, 0.4])[0]
                     ProductReview.objects.create(product=product, buyer=buyer, rating=rating, comment=random.choice(REVIEWS))
