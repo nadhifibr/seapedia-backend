@@ -52,7 +52,7 @@ class TopupWalletView(BuyerPermissionMixin, APIView):
                     buyer=buyer,
                     type='TOPUP',
                     amount=amount,
-                    description=f'Dummy top-up of ${amount}'
+                    description='Top up'
                 )
             return Response({
                 'detail': 'Top-up successful',
