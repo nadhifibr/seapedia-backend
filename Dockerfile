@@ -23,11 +23,19 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy semua file aplikasi ke dalam container
 COPY . /app/
 
-# (Opsional) Kumpulkan file statis (Whitenoise)
-# RUN python manage.py collectstatic --noinput
+# Kumpulkan file statis (Whitenoise)
+RUN python manage.py collectstatic --noinput
 
-# Beri tahu Docker bahwa aplikasi jalan di port 8000
-EXPOSE 8000
+# --- HUGGING FACE SPACES CONFIGURATION ---
+# Hugging Face mengharuskan port 7860
+EXPOSE 7860
 
-# Perintah untuk menyalakan server menggunakan Gunicorn
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "core.wsgi:application"]
+# Hugging Face menjalankan container sebagai non-root user (UID 1000)
+# Jadi kita harus memberikan akses penuh ke folder /app
+RUN useradd -m -u 1000 user && \
+    chown -R user:user /app
+
+USER user
+
+# Jalankan server Gunicorn di port 7860
+CMD ["gunicorn", "--bind", "0.0.0.0:7860", "core.wsgi:application"]
