@@ -5,15 +5,17 @@ from django.utils import timezone
 from .models import Discount, Voucher, Promo
 from .serializers import VoucherSerializer, PromoSerializer, DiscountSerializer
 
+from apps.users.permissions import IsActiveAdmin
+
 class VoucherViewSet(viewsets.ModelViewSet):
     queryset = Voucher.objects.all()
     serializer_class = VoucherSerializer
-    permission_classes = [permissions.IsAdminUser]
+    permission_classes = [permissions.IsAuthenticated, IsActiveAdmin]
 
 class PromoViewSet(viewsets.ModelViewSet):
     queryset = Promo.objects.all()
     serializer_class = PromoSerializer
-    permission_classes = [permissions.IsAdminUser]
+    permission_classes = [permissions.IsAuthenticated, IsActiveAdmin]
 
 @api_view(['GET'])
 @permission_classes([permissions.IsAuthenticated])
