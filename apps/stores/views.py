@@ -75,8 +75,20 @@ class PublicStoreListView(generics.ListAPIView):
             
         return queryset
 
+from django.db.models import Sum, Avg, DecimalField, Q
+from django.db.models.functions import Coalesce
+
 class PublicStoreDetailView(generics.RetrieveAPIView):
-    queryset = Store.objects.all()
     serializer_class = StoreSerializer
     permission_classes = [AllowAny]
     lookup_field = 'slug'
+
+    def get_queryset(self):
+        return Store.objects.all().annotate(
+            total_sold=Coalesce(Sum('products__sold_count'), 0),
+            average_rating=Coalesce(
+                Avg('products__average_rating', filter=Q(products__average_rating__gt=0)), 
+                0.0, 
+                output_field=DecimalField(max_digits=3, decimal_places=1)
+            )
+        )
