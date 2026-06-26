@@ -339,15 +339,23 @@ class SellerOrderViewSet(viewsets.ReadOnlyModelViewSet):
         if not hasattr(user, 'seller_profile') or not hasattr(user.seller_profile, 'store'):
             return Response({'detail': 'Not a seller or no store.'}, status=status.HTTP_400_BAD_REQUEST)
             
-        orders = Order.objects.filter(store=user.seller_profile.store, is_refunded=False)
+        orders = Order.objects.filter(store=user.seller_profile.store, is_refunded=False, status='PESANAN_SELESAI')
         revenue = orders.aggregate(
             total_revenue=Sum(F('subtotal') - F('discount_amount'))
         )['total_revenue'] or Decimal('0.00')
         total_orders = orders.count()
         
+        # Build history
+        history = orders.order_by('-created_at').annotate(
+            revenue=F('subtotal') - F('discount_amount')
+        ).values(
+            'id', 'created_at', 'status', 'revenue'
+        )
+        
         return Response({
             'total_revenue': revenue,
-            'total_orders': total_orders
+            'total_orders': total_orders,
+            'history': list(history)
         }, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=['post'], url_path='process')
