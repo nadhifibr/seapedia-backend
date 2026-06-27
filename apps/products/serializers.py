@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from apps.stores.serializers import StoreSerializer
+from apps.stores.serializers import StoreSerializer, SimpleStoreSerializer
 from .models import Product
 
 class ProductSerializer(serializers.ModelSerializer):
@@ -16,7 +16,7 @@ class ProductSerializer(serializers.ModelSerializer):
         return value
 
 class PublicProductSerializer(serializers.ModelSerializer):
-    store = StoreSerializer(read_only=True)
+    store = SimpleStoreSerializer(read_only=True)
     
     class Meta:
         model = Product

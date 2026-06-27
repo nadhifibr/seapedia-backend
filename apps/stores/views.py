@@ -60,7 +60,15 @@ class PublicStoreListView(generics.ListAPIView):
     pagination_class = StandardResultsSetPagination
 
     def get_queryset(self):
-        queryset = Store.objects.all().order_by('-created_at')
+        from django.db.models import Prefetch
+        from apps.products.models import Product
+        
+        products_prefetch = Prefetch(
+            'products', 
+            queryset=Product.objects.filter(is_active=True).order_by('-created_at'), 
+            to_attr='cached_recent_products'
+        )
+        queryset = Store.objects.prefetch_related(products_prefetch).order_by('-created_at')
         q = self.request.query_params.get('q')
         location = self.request.query_params.get('location')
         

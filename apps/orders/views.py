@@ -88,7 +88,7 @@ class OrderViewSet(viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         user = self.request.user
         if hasattr(user, 'buyer_profile'):
-            return Order.objects.filter(buyer=user.buyer_profile).order_by('-created_at')
+            return Order.objects.filter(buyer=user.buyer_profile).select_related('store').prefetch_related('items__product', 'status_history').order_by('-created_at')
         return Order.objects.none()
 
     @action(detail=False, methods=['get'])
@@ -330,7 +330,7 @@ class SellerOrderViewSet(viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         user = self.request.user
         if hasattr(user, 'seller_profile') and hasattr(user.seller_profile, 'store'):
-            return Order.objects.filter(store=user.seller_profile.store).order_by('-created_at')
+            return Order.objects.filter(store=user.seller_profile.store).select_related('store').prefetch_related('items__product', 'status_history').order_by('-created_at')
         return Order.objects.none()
 
     @action(detail=False, methods=['get'])

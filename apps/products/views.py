@@ -43,7 +43,7 @@ class PublicProductListView(generics.ListAPIView):
     pagination_class = StandardResultsSetPagination
 
     def get_queryset(self):
-        queryset = Product.objects.filter(is_active=True)
+        queryset = Product.objects.filter(is_active=True).select_related('store')
         
         # 1. Store Slug Filter (from previous task)
         store_slug = self.request.query_params.get('store_slug')

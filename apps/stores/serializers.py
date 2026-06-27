@@ -7,6 +7,11 @@ class SimpleProductSerializer(serializers.ModelSerializer):
         model = Product
         fields = ['id', 'name', 'price', 'image_url']
 
+class SimpleStoreSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Store
+        fields = ['id', 'name', 'slug', 'location', 'image_url']
+
 class StoreSerializer(serializers.ModelSerializer):
     recent_products = serializers.SerializerMethodField()
     total_sold = serializers.IntegerField(read_only=True, default=0)
@@ -18,6 +23,9 @@ class StoreSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'slug', 'created_at']
 
     def get_recent_products(self, obj):
-        from apps.products.models import Product
-        products = Product.objects.filter(store=obj, is_active=True).order_by('-created_at')[:3]
+        if hasattr(obj, 'cached_recent_products'):
+            products = obj.cached_recent_products[:3]
+        else:
+            from apps.products.models import Product
+            products = Product.objects.filter(store=obj, is_active=True).order_by('-created_at')[:3]
         return SimpleProductSerializer(products, many=True).data
