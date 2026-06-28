@@ -143,6 +143,10 @@ DATABASES = {
     }
 }
 
+# Resend Email Configuration
+RESEND_API_KEY = os.getenv("RESEND_API_KEY")
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
+
 # Redis Caching
 REDIS_URL = os.getenv('REDIS_URL')
 if REDIS_URL:
